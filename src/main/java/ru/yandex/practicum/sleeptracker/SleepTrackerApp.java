@@ -2,19 +2,19 @@ package ru.yandex.practicum.sleeptracker;
 
 import ru.yandex.practicum.sleeptracker.functions.*;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class SleepTrackerApp {
 
-    private static final String FILE_NAME = "sleep_log.txt";
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yy HH:mm");
     private final List<SleepAnalyzerFunction> analyticalFunctions = new ArrayList<>();
 
@@ -29,10 +29,16 @@ public class SleepTrackerApp {
     }
 
     public static void main(String[] args) {
+        if (args.length == 0) {
+            System.out.println("Укажите путь к файлу с логом сна в аргументах запуска.");
+            return;
+        }
+
+        String filePath = args[0];
         SleepTrackerApp app = new SleepTrackerApp();
 
         try {
-            List<SleepingSession> sessions = app.loadLogsFromResources();
+            List<SleepingSession> sessions = app.loadLogs(filePath);
 
             System.out.println("=== РЕЗУЛЬТАТЫ АНАЛИЗА СНА ===");
             app.analyticalFunctions.stream()
@@ -46,15 +52,13 @@ public class SleepTrackerApp {
         }
     }
 
-    private List<SleepingSession> loadLogsFromResources() throws IOException {
-        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(FILE_NAME);
-
-        if (inputStream == null) {
-            throw new IOException("Файл '" + FILE_NAME + "' не найден в папке ресурсов (src/main/resources)!");
+    private List<SleepingSession> loadLogs(String filePath) throws IOException {
+        Path path = Paths.get(filePath);
+        if (!Files.exists(path) || Files.isDirectory(path)) {
+            throw new IOException("Файл по указанному пути не найден: " + filePath);
         }
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-            return reader.lines()
+        try (Stream<String> lines = Files.lines(path)) {
+            return lines
                     .filter(line -> !line.isBlank())
                     .map(line -> {
                         String[] parts = line.split(";");
